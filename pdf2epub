@@ -1,0 +1,8 @@
+#!/bin/sh
+# Run the tool from the repo's .venv in isolated mode (-I: no cwd or user site on sys.path).
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+if [ ! -x "$ROOT/.venv/bin/python" ]; then
+  echo "pdf2epub: no .venv yet, run $ROOT/setup.sh" >&2
+  exit 1
+fi
+exec "$ROOT/.venv/bin/python" -I -m pdf2epub "$@"

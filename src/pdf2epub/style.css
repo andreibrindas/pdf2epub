@@ -1,0 +1,176 @@
+/* pdf2epub default stylesheet: reflowable, leaves fonts and colours to the reader app. */
+@namespace epub "http://www.idpf.org/2007/ops";
+
+body {
+  margin: 0 3%;
+  line-height: 1.45;
+  orphans: 2;
+  widows: 2;
+}
+
+p {
+  margin: 0;
+  text-indent: 1.5em;
+  text-align: justify;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+
+/* no indent after headings and other blocks */
+h1 + p, h2 + p, h3 + p, h4 + p, h5 + p, h6 + p,
+blockquote + p, table + p, p.subtitle + p, div + p {
+  text-indent: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  text-align: left;
+  hyphens: none;
+  -webkit-hyphens: none;
+  page-break-after: avoid;
+  break-after: avoid;
+  line-height: 1.25;
+}
+
+h1 {
+  font-size: 1.6em;
+  font-weight: normal;
+  text-align: center;
+  margin: 2.5em 0 1.5em;
+  page-break-before: always;
+  break-before: page;
+}
+
+h1.chapter .chap-num {
+  display: block;
+  font-size: 0.6em;
+  font-style: italic;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.6em;
+}
+
+h1.chapter .chap-title {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+p.subtitle {
+  text-align: center;
+  text-indent: 0;
+  font-size: 0.95em;
+  letter-spacing: 0.05em;
+  margin: -0.8em 0 1.5em;
+}
+
+h2 { font-size: 1.15em; margin: 1.6em 0 0.6em; }
+h3 { font-size: 1.05em; margin: 1.4em 0 0.5em; }
+h4, h5, h6 { font-size: 1em; margin: 1.2em 0 0.4em; }
+
+.h-caps { font-weight: bold; letter-spacing: 0.03em; }
+.h-bold { font-weight: bold; }
+.h-bolditalic { font-weight: bold; font-style: italic; }
+.h-italic { font-weight: normal; font-style: italic; }
+
+blockquote.epigraph {
+  margin: 0 1.5em 1.8em;
+}
+
+blockquote.epigraph p {
+  text-indent: 0;
+  font-size: 0.95em;
+}
+
+table.compare {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0 1.2em;
+  font-size: 0.95em;
+}
+
+table.compare th, table.compare td {
+  border: 1px solid currentColor;
+  padding: 0.3em 0.5em;
+  text-align: center;
+  vertical-align: top;
+}
+
+/* bibliography: hanging indent */
+p.bib {
+  text-indent: -1.5em;
+  margin: 0 0 0.6em 1.5em;
+  text-align: left;
+}
+
+a { text-decoration: none; }
+p a[href^="http"] { word-break: break-all; }
+
+sup {
+  font-size: 0.7em;
+  line-height: 0;
+  vertical-align: super;
+}
+
+sup a { text-decoration: none; }
+
+/* footnotes */
+section.footnotes {
+  margin-top: 2.5em;
+  font-size: 0.85em;
+}
+
+hr.fn-sep {
+  width: 30%;
+  margin: 0 0 1em 0;
+  border: none;
+  border-top: 1px solid currentColor;
+}
+
+aside.fn p {
+  text-indent: 0;
+  text-align: left;
+  margin: 0 0 0.45em;
+}
+
+a.fn-back { font-weight: bold; }
+
+/* title, copyright, contents */
+.titlepage {
+  text-align: center;
+  margin-top: 25%;
+}
+
+.titlepage .tp-author {
+  text-indent: 0;
+  text-align: center;
+  letter-spacing: 0.1em;
+  margin-bottom: 3em;
+}
+
+h1.tp-title {
+  font-size: 2em;
+  letter-spacing: 0.06em;
+  margin: 0;
+  page-break-before: avoid;
+  break-before: avoid;
+}
+
+.copyright {
+  margin-top: 30%;
+  font-size: 0.85em;
+}
+
+.copyright p {
+  text-indent: 0;
+  text-align: left;
+  margin-bottom: 0.9em;
+}
+
+nav#toc h1 { margin-top: 1.5em; }
+nav#toc ol { list-style: none; padding-left: 0; }
+nav#toc ol ol { padding-left: 1.5em; font-size: 0.92em; }
+nav#toc li { margin: 0.35em 0; }
+
+/* in-book contents page */
+ol.contents { list-style: none; padding-left: 0; margin: 0; }
+ol.contents ol { list-style: none; padding-left: 1.5em; margin: 0.3em 0 0.6em; font-size: 0.92em; }
+ol.contents li { margin: 0.35em 0; text-indent: 0; }

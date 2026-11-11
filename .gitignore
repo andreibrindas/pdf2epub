@@ -1,0 +1,12 @@
+# environment
+.venv/
+__pycache__/
+*.egg-info/
+.DS_Store
+
+# book content: personal copies, never committed
+books/*/source/
+books/*/out/
+books/*/work/
+*.pdf
+*.epub
