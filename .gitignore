@@ -8,5 +8,6 @@ __pycache__/
 books/*/source/
 books/*/out/
 books/*/work/
+books/*/md*/
 *.pdf
 *.epub

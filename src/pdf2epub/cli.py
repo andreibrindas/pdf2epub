@@ -1,4 +1,4 @@
-"""Command line: pdf2epub new | inspect | build | check | regress | list."""
+"""Command line: pdf2epub new | inspect | build | check | regress | list | scan."""
 import argparse
 import math
 import os
@@ -37,6 +37,15 @@ def all_books():
     return sorted(p for p in d.iterdir() if (p / "recipe.py").is_file()) if d.is_dir() else []
 
 
+def load(book):
+    """-> (recipe, is_scan)"""
+    from .recipe import load_recipe
+    from .scan import ScanRecipe
+
+    r = load_recipe(book)
+    return r, isinstance(r, ScanRecipe)
+
+
 def py(x):
     """Python literal for the recipe template."""
     if isinstance(x, float) and math.isinf(x):
@@ -50,6 +59,7 @@ def cmd_new(a):
     import pymupdf
 
     from .diagnose import suggest_layout, suggest_sections
+    from .scan import looks_scanned
 
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", a.slug):
         raise SystemExit("slug: lower-case letters, digits and dashes, e.g. my-book")
@@ -63,6 +73,8 @@ def cmd_new(a):
     pdf = book / "source" / "book.pdf"
     if src.resolve() != pdf.resolve():
         shutil.copyfile(src, pdf)
+    if a.scan or (not a.text and looks_scanned(str(pdf))):
+        return new_scan(a, book, pdf)
 
     s = suggest_layout(str(pdf))
     L = s["layout"]
@@ -89,6 +101,22 @@ def cmd_new(a):
     print(f"next: ./pdf2epub inspect {a.slug} outline   then edit recipe.py, then ./pdf2epub build {a.slug}")
 
 
+def new_scan(a, book, pdf):
+    import pymupdf
+
+    with pymupdf.open(pdf) as doc:
+        meta, n = doc.metadata or {}, len(doc)
+    title = (meta.get("title") or "").strip() or "TODO title"
+    author = (meta.get("author") or "").strip() or "TODO author"
+    tmpl = string.Template((PKG / "scan-recipe.py.tmpl").read_text())
+    (book / "recipe.py").write_text(tmpl.substitute(
+        slug=a.slug, title=py(title), author=py(author), language=py(a.language), first=min(2, n), last=n))
+    print(f"created {book}/")
+    print(f"  source/book.pdf  ({n} pages, scanned: no usable text layer)")
+    print("  recipe.py        (a ScanRecipe: the text comes from OCR and transcription)")
+    print(f"next: follow docs/scanned-books.md, starting with ./pdf2epub scan {a.slug} sheets")
+
+
 def cmd_inspect(a):
     from . import diagnose
     from .recipe import load_recipe
@@ -100,7 +128,7 @@ def cmd_inspect(a):
     else:
         book = book_path(a.target)
         r = load_recipe(book)
-        pdf, layout, heur = r.pdf, r.layout, r.heuristics
+        pdf, layout, heur = r.pdf, getattr(r, "layout", None), getattr(r, "heuristics", None)
         out = book / "work" / "png"
     diagnose.run(a.mode, pdf, layout, heur, a.pages, str(a.out or out))
 
@@ -123,11 +151,22 @@ def _fingerprint_report(book, epub):
 
 
 def cmd_build(a):
-    from .build import build
-
     book = book_path(a.book)
-    res = build(book, verbose=a.verbose, report=not a.quiet)
-    print(f"\nwrote {res['epub']}\n{len(res['warnings'])} warnings")
+    _, scanned = load(book)
+    if scanned:
+        from .scanbuild import build
+
+        formats = ("epub",) + (("docx",) if a.docx else ()) + (("txt",) if a.txt else ())
+        res = build(book, report=not a.quiet, formats=formats)
+        written = [res["epub"], *res["extra"]]
+    else:
+        from .build import build
+
+        if a.docx or a.txt:
+            raise SystemExit("--docx and --txt are for scanned books only")
+        res = build(book, verbose=a.verbose, report=not a.quiet)
+        written = [res["epub"]]
+    print("\n" + "\n".join(f"wrote {x}" for x in written) + f"\n{len(res['warnings'])} warnings")
     _fingerprint_report(book, res["epub"])
 
 
@@ -148,7 +187,7 @@ def cmd_check(a):
 
 
 def cmd_regress(a):
-    from .build import build
+    from .build import build as text_build
     from .checks import compare, fingerprint, load_fingerprint, save_fingerprint
 
     books = [book_path(b) for b in a.books] if a.books else [
@@ -161,9 +200,23 @@ def cmd_regress(a):
         if not (book / "source" / "book.pdf").is_file():
             print(f"{book.name}: skipped (source/book.pdf missing)")
             continue
+        r, scanned = load(book)
+        build, note = text_build, ""
+        if scanned:
+            from .scanbuild import build
+
+            missing = [p.file for p in r.parts if not os.path.isfile(r.md(p))]
+            if missing:
+                print(f"{book.name}: skipped (md/ incomplete: {', '.join(missing[:3])})")
+                continue
+            if not shutil.which("pandoc"):
+                print(f"{book.name}: skipped (pandoc not found)")
+                continue
         with tempfile.TemporaryDirectory() as tmp:
             res = build(book, out_dir=tmp, report=False)
             fp = fingerprint(res["epub"])
+        if scanned:
+            note = f" (built with pandoc {res['pandoc']}; another pandoc version changes the output)"
         old = load_fingerprint(book)
         if a.update:
             save_fingerprint(book, fp)
@@ -175,7 +228,7 @@ def cmd_regress(a):
         diffs = compare(old, fp)
         if diffs:
             failed.append(book.name)
-            print(f"{book.name}: CHANGED")
+            print(f"{book.name}: CHANGED{note}")
             for d in diffs:
                 print("   ", d)
         else:
@@ -202,13 +255,36 @@ def cmd_list(a):
         print(f"{book.name:24s} {name}  [{', '.join(flags)}]")
 
 
+def cmd_scan(a):
+    from . import scan
+
+    book = book_path(a.book)
+    r, scanned = load(book)
+    if not scanned:
+        raise SystemExit(f"{book.name}: its recipe is a text-PDF Recipe; scan commands need a ScanRecipe "
+                         "(docs/scanned-books.md)")
+    if a.step == "sheets":
+        scan.sheets(r, a.pages)
+    elif a.step == "pages":
+        scan.pages(r, jobs=a.jobs, force=a.force)
+    elif a.step == "brief":
+        scan.brief(r)
+    elif a.step == "figures":
+        scan.figures(r, a.keys)
+    elif a.step == "verify":
+        from .scanbuild import verify
+
+        if verify(r, a.parts, show_all=a.all)["errors"]:
+            sys.exit(1)
+
+
 # ----------------------------------------------------------------- parser
 
 def main(argv=None):
     from .diagnose import MODES
 
-    p = argparse.ArgumentParser(prog="pdf2epub", description="Turn a text PDF into a clean reflowable EPUB 3, "
-                                "one recipe per book (books/<slug>/recipe.py).")
+    p = argparse.ArgumentParser(prog="pdf2epub", description="Turn a PDF book, text or scanned, into a clean "
+                                "reflowable EPUB 3, one recipe per book (books/<slug>/recipe.py).")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     s = sub.add_parser("new", help="start a book: copy the PDF in and draft a recipe")
@@ -216,6 +292,9 @@ def main(argv=None):
     s.add_argument("pdf")
     s.add_argument("--language", default="en", help="BCP 47 language code (default en)")
     s.add_argument("--force", action="store_true", help="overwrite an existing recipe.py")
+    kind = s.add_mutually_exclusive_group()
+    kind.add_argument("--scan", action="store_true", help="treat the PDF as scanned (default: detected)")
+    kind.add_argument("--text", action="store_true", help="use the PDF's text layer even if it looks scanned")
     s.set_defaults(fn=cmd_new)
 
     s = sub.add_parser("inspect", help="look at the PDF: layout, outline, fonts, lines...",
@@ -231,6 +310,8 @@ def main(argv=None):
     s.add_argument("book")
     s.add_argument("-v", "--verbose", action="store_true", help="also log dropped junk-font runs")
     s.add_argument("-q", "--quiet", action="store_true", help="no classification report, warnings only")
+    s.add_argument("--docx", action="store_true", help="scanned books: also write a .docx")
+    s.add_argument("--txt", action="store_true", help="scanned books: also write a plain-text .txt")
     s.set_defaults(fn=cmd_build)
 
     s = sub.add_parser("check", help="epubcheck the built EPUB, compare with fingerprint.json")
@@ -244,6 +325,22 @@ def main(argv=None):
 
     s = sub.add_parser("list", help="list books and their state")
     s.set_defaults(fn=cmd_list)
+
+    s = sub.add_parser("scan", help="scanned books: sheets, pages, brief, verify, figures (docs/scanned-books.md)")
+    s.add_argument("book")
+    steps = s.add_subparsers(dest="step", required=True, metavar="step")
+    x = steps.add_parser("sheets", help="contact sheets labelled with page names, to fill in folios and parts")
+    x.add_argument("pages", nargs="?", help="e.g. 1-40 | all (default all)")
+    x = steps.add_parser("pages", help="render and OCR every transcribed page into work/ (incremental)")
+    x.add_argument("-j", "--jobs", type=int, help="parallel OCR jobs (default: CPU count)")
+    x.add_argument("--force", action="store_true", help="re-render and re-OCR every page")
+    steps.add_parser("brief", help="write the transcription and audit briefs, one prompt per part")
+    x = steps.add_parser("verify", help="check md/ against the recipe and, page by page, against the OCR")
+    x.add_argument("parts", nargs="*", help="part files, stems or numbers (default: all)")
+    x.add_argument("--all", action="store_true", help="print every page's score, not only the flagged ones")
+    x = steps.add_parser("figures", help="crop the recipe's figures into work/figures/")
+    x.add_argument("keys", nargs="*", help="figure keys (default: all)")
+    s.set_defaults(fn=cmd_scan)
 
     a = p.parse_args(argv)
     a.fn(a)

@@ -147,7 +147,7 @@ class Recipe:
 
 
 def load_recipe(book_dir):
-    """Import books/<slug>/recipe.py and return its RECIPE."""
+    """Import books/<slug>/recipe.py and return its RECIPE: a Recipe (text PDF) or a ScanRecipe."""
     book_dir = os.path.abspath(book_dir)
     path = os.path.join(book_dir, "recipe.py")
     if not os.path.isfile(path):
@@ -156,7 +156,9 @@ def load_recipe(book_dir):
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     recipe = getattr(mod, "RECIPE", None)
-    if not isinstance(recipe, Recipe):
-        raise SystemExit(f"{path} must define RECIPE = Recipe(...)")
+    from .scan import ScanRecipe  # imported here: scan.py imports this module
+
+    if not isinstance(recipe, (Recipe, ScanRecipe)):
+        raise SystemExit(f"{path} must define RECIPE = Recipe(...) or ScanRecipe(...)")
     recipe.book_dir = book_dir
     return recipe

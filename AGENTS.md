@@ -1,13 +1,13 @@
 # pdf2epub: playbook for agents
 
-Converts a text PDF (a print-ready book) into a reflowable EPUB 3 that reads well on Kindle, Apple Books and Kobo. The engine in `src/pdf2epub/` is generic. Everything specific to one PDF goes in that book's **recipe**, `books/<slug>/recipe.py`. The field comments in `src/pdf2epub/recipe.py` are the reference for every recipe setting. Commands and flags: `./pdf2epub --help` and `./pdf2epub <command> --help`.
+Converts a PDF book into a reflowable EPUB 3 that reads well on Kindle, Apple Books and Kobo. A text PDF is parsed directly. A **scanned** PDF (pages that are pictures, Romanian or English) goes through OCR and agent transcription, and follows [docs/scanned-books.md](docs/scanned-books.md) instead of the steps below. The engine in `src/pdf2epub/` is generic. Everything specific to one PDF goes in that book's **recipe**, `books/<slug>/recipe.py`. The field comments in `src/pdf2epub/recipe.py` are the reference for every recipe setting. Commands and flags: `./pdf2epub --help` and `./pdf2epub <command> --help`.
 
-The books are the user's personal copies. Their content (`source/`, `out/`, `work/`, any PDF or EPUB) stays on disk and out of git, and `.gitignore` already covers it. Commit only `recipe.py`, `NOTES.md` and `fingerprint.json` for each book.
+The books are the user's personal copies. Their content (`source/`, `out/`, `work/`, a scanned book's `md/` transcription, any PDF or EPUB) stays on disk and out of git, and `.gitignore` already covers it. Commit only `recipe.py`, `NOTES.md` and `fingerprint.json` for each book.
 
 ## Convert a book
 
 0. **Setup, once per machine:** `./setup.sh`. It needs Python 3.11 or newer; epubcheck comes from `brew install epubcheck`.
-1. **Start:** `./pdf2epub new <slug> <file.pdf> --language <code>`. This copies the PDF to `books/<slug>/source/book.pdf` and drafts a recipe with a guessed layout and guessed sections. If it reports no text layer, the PDF is scanned and needs OCR first, which this tool does not do. Stop there and tell the user.
+1. **Start:** `./pdf2epub new <slug> <file.pdf> --language <code>`. This copies the PDF to `books/<slug>/source/book.pdf` and drafts a recipe with a guessed layout and guessed sections. If it reports a scanned PDF, switch to [docs/scanned-books.md](docs/scanned-books.md).
 2. **Look before tuning.** Render the front matter and a few chapter openings with `./pdf2epub inspect <slug> render 1-8,<pages>`, then open the PNGs with Read. Use `inspect <slug> outline` to find where chapters start. Then fill every TODO in the recipe: metadata, `cover_page`, `copyright_page`, and `sections` (merge, split or rename them, and set each one's `kind`). This step is done when no TODO is left and each section's page range starts on a real chapter opening.
 3. **Build:** `./pdf2epub build <slug>`. Read the classification report one section at a time. Every h1/h2/h3 must be a heading in the PDF, and every epigraph a real epigraph. Paragraph counts should be plausible for the page count. Each WARN line must be fixed, or explained in the book's NOTES.md. When a page comes out wrong, look at it with `inspect <slug> lines <page>` next to its render, change the recipe's `layout`/`heuristics`, and rebuild. The step is done when the report reads like the book's real structure and no WARN line is left unexplained.
 4. **Check:** `./pdf2epub check <slug>`. epubcheck must report 0 errors and 0 warnings. Then compare two or three chapters in `books/<slug>/out/unpacked/` against their page renders: paragraphs, italics, notes and headings.
@@ -15,7 +15,7 @@ The books are the user's personal copies. Their content (`source/`, `out/`, `wor
 
 ## Changing the engine
 
-The output of every book is pinned by `books/<slug>/fingerprint.json`, a sha256 of each file inside the EPUB. After any change under `src/`, run `./pdf2epub regress`. Each book must report `ok`, or its diff must be exactly the change you intended. Check that in `out/unpacked/` after a `build`, then accept it with `regress --update`. Books whose `source/book.pdf` is not on this machine are skipped, so say which ones went unchecked.
+The output of every book is pinned by `books/<slug>/fingerprint.json`, a sha256 of each file inside the EPUB. After any change under `src/`, run `./pdf2epub regress`. Each book must report `ok`, or its diff must be exactly the change you intended. Check that in `out/unpacked/` after a `build`, then accept it with `regress --update`. Books whose `source/book.pdf` is not on this machine are skipped, and so are scanned books without their `md/` or without pandoc. Say which ones went unchecked. The scan route also has synthetic tests that need no book: `.venv/bin/python -m unittest discover -s tests`.
 
 When a PDF needs new behaviour, add a recipe field or a hook with a default that leaves every existing book unchanged. Code for one particular book does not go in the engine.
 
