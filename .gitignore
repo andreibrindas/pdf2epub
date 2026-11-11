@@ -4,10 +4,7 @@ __pycache__/
 *.egg-info/
 .DS_Store
 
-# book content: personal copies, never committed
-books/*/source/
-books/*/out/
-books/*/work/
-books/*/md*/
+# books are personal copies: everything under books/ stays on this machine
+books/
 *.pdf
 *.epub

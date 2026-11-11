@@ -90,8 +90,7 @@ rules, and the build turns cedilla ş ţ into comma-below ș ț and fixes closin
   end of each chapter. In DOCX they become real Word footnotes.
 - **Index.** Inside a `::: index` div, page numbers link to the page anchors. In
   `::: {.index .scripture}` only numbers after "p." or "pp." are pages.
-- **Git.** `md/`, `work/` and `out/` stay out of git (copyrighted text). Commit only `recipe.py`,
-  `NOTES.md` and `fingerprint.json`. `regress` skips a scanned book whose `md/` is incomplete on
-  this machine, or when pandoc is missing. A pandoc upgrade can change the output, so when a
-  scanned book changes, `regress` names the pandoc version it used. Check the diff in
-  `out/unpacked/`, then accept it with `--update`.
+- **Regress.** `regress` skips a scanned book whose `md/` is incomplete on this machine, or when
+  pandoc is missing. A pandoc upgrade can change the output, so when a scanned book changes,
+  `regress` names the pandoc version it used. Check the diff in `out/unpacked/`, then accept it
+  with `--update`.

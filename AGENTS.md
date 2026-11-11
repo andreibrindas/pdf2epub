@@ -2,7 +2,7 @@
 
 Converts a PDF book into a reflowable EPUB 3 that reads well on Kindle, Apple Books and Kobo. A text PDF is parsed directly. A **scanned** PDF (pages that are pictures, Romanian or English) goes through OCR and agent transcription, and follows [docs/scanned-books.md](docs/scanned-books.md) instead of the steps below. The engine in `src/pdf2epub/` is generic. Everything specific to one PDF goes in that book's **recipe**, `books/<slug>/recipe.py`. The field comments in `src/pdf2epub/recipe.py` are the reference for every recipe setting. Commands and flags: `./pdf2epub --help` and `./pdf2epub <command> --help`.
 
-The books are the user's personal copies. Their content (`source/`, `out/`, `work/`, a scanned book's `md/` transcription, any PDF or EPUB) stays on disk and out of git, and `.gitignore` already covers it. Commit only `recipe.py`, `NOTES.md` and `fingerprint.json` for each book.
+The books are the user's personal copies. Everything under `books/`, recipes, notes and fingerprints included, stays on this machine and out of git; `.gitignore` covers the whole folder.
 
 ## Convert a book
 

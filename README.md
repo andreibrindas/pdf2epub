@@ -32,14 +32,14 @@ brew install pandoc tesseract tesseract-lang   # scanned books only
 src/pdf2epub/      the engine: text-PDF parsing, the scan route (scan*.py, briefs/), EPUB packaging
 docs/              workflows that go beyond AGENTS.md
 tests/             synthetic tests, no book needed
-books/<slug>/
-  recipe.py        everything specific to this PDF (committed)
-  NOTES.md         its quirks and the reasons for the recipe values (committed)
-  fingerprint.json hashes of the accepted output, for ./pdf2epub regress (committed)
-  source/book.pdf  the PDF (ignored by git)
-  md/              scanned books: the transcription, one file per part (ignored)
-  out/             the EPUB and an unpacked copy (ignored)
-  work/            scratch: renders, OCR, briefs, audits (ignored)
+books/<slug>/      one folder per book
+  recipe.py        everything specific to this PDF
+  NOTES.md         its quirks and the reasons for the recipe values
+  fingerprint.json hashes of the accepted output, for ./pdf2epub regress
+  source/book.pdf  the PDF
+  md/              scanned books: the transcription, one file per part
+  out/             the EPUB and an unpacked copy
+  work/            scratch: renders, OCR, briefs, audits
 ```
 
-Book files are personal copies and stay out of the repository.
+Books are personal copies: the whole `books/` folder stays on your machine, and git ignores it.
